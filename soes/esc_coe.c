@@ -620,19 +620,18 @@ static void SDO_upload_complete_access (void)
 
    /* loop through the subindexes to get the total size */
    uint32_t size = complete_access_subindex_loop(objd, nidx, nsub, NULL, UPLOAD, 0);
+   if (size == (size_t)ABORT_CA_NOT_SUPPORTED)
+   {
+      /* 'size' is in this case actually an abort code */
+      set_state_idle (MBXout, index, subindex, size);
+      return;
+   }
 
    /* expedited bits used calculation */
    uint8_t dss = (size > 24) ? 0 : (uint8_t)(4U * (3U - ((size - 1U) >> 3)));
 
    /* convert bits to bytes */
    size = BITS2BYTES(size);
-
-   if (size > 0xffff)
-   {
-      /* 'size' is in this case actually an abort code */
-      set_state_idle (MBXout, index, subindex, size);
-      return;
-   }
 
    /* check that upload data fits in the preallocated buffer */
    if ((size + PREALLOC_FACTOR * COE_HEADERSIZE) > PREALLOC_BUFFER_SIZE)
@@ -955,20 +954,21 @@ static void SDO_download_complete_access (void)
 
    /* loop through the subindexes to get the total size */
    uint32_t size = complete_access_subindex_loop(objd, nidx, nsub, NULL, DOWNLOAD, 0);
-   size = BITS2BYTES(size);
-   if (size > 0xffff)
+   if (size == (size_t)ABORT_CA_NOT_SUPPORTED)
    {
       /* 'size' is in this case actually an abort code */
       set_state_idle (0, index, subindex, size);
       return;
    }
+   size = BITS2BYTES(size);
+
    /* The document ETG.1020 S (R) V1.3.0, chapter 12.2, states that
     * "The SDO Download Complete Access data length shall always match
     * the full current object size (defined by SubIndex0)".
     * But EtherCAT Conformance Test Tool doesn't follow this rule for some test
     * cases, which is the reason to here only check for 'less than or equal'.
     */
-   else if (bytes <= size)
+   if (bytes <= size)
    {
       abortcode = ESC_download_pre_objecthandler(index, subindex, mbxdata,
             size, objd->flags | COMPLETE_ACCESS_FLAG);
