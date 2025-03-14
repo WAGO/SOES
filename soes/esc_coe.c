@@ -504,6 +504,12 @@ static uint32_t complete_access_subindex_loop(const _objd *objd,
       uint8_t const access = (objd + nsub)->flags & 0x3f;
       uint8_t const state = ESCvar.ALstatus & 0x0f;
 
+      if ((max_bytes > 0U) && (   (((bitlen % 8U) == 0U) && ((BITS2BYTES(size) + BITS2BYTES(bitlen)) > max_bytes))
+                               || (((bitlen % 8U) != 0U) && (BITS2BYTES(size + bitlen) > max_bytes))))
+      {
+         break;
+      }
+
       if ((bitlen % 8) == 0)
       {
          if (bitoffset != 0)
@@ -574,11 +580,6 @@ static uint32_t complete_access_subindex_loop(const _objd *objd,
       size +=
       ((nsub == 0) && (SDOobjects[nidx].objtype != OTYPE_VAR)) ? 16 : bitlen;
       nsub++;
-
-      if ((max_bytes > 0) && (BITS2BYTES(size) >= max_bytes))
-      {
-         break;
-      }
    }
 
    return size;
