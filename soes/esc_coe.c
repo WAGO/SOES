@@ -510,11 +510,15 @@ static uint32_t complete_access_subindex_loop(int32_t const nidx,
       mbxdata[1] = 0;
    }
 
+   bool const isNumberOfSubindexesChanging =   (nsub == 0U) && (load_type == DOWNLOAD)
+                                            && (SDOobjects[nidx].objtype == OTYPE_ARRAY)
+                                            && (WRITE_ACCESS(objd->flags, (ESCvar.ALstatus & 0x0FU)))
+                                            && (mbxdata != NULL)
+                                            && (((uint8_t*)mbxdata)[0] <= SDOobjects[nidx].maxsub);
+
    uint8_t const maxsub = (SDOobjects[nidx].maxsub == 0U)
                          ? 0U
-                         : (   (nsub == 0U) && (load_type == DOWNLOAD) && (SDOobjects[nidx].objtype == OTYPE_ARRAY)
-                            && (WRITE_ACCESS(objd->flags, (ESCvar.ALstatus & 0x0FU))) && (mbxdata != NULL)
-                            && (((uint8_t*)mbxdata)[0] <= SDOobjects[nidx].maxsub))
+                         : isNumberOfSubindexesChanging
                          ? ((uint8_t*)mbxdata)[0]
                          : *(uint8_t*)(objd->data);
 
@@ -980,24 +984,15 @@ static void SDO_download_complete_access (void)
 
    const _objd *objd = SDOobjects[nidx].objdesc;
 
-   uint32_t size;
-   if (   (subindex == 0U) && (SDOobjects[nidx].objtype == OTYPE_ARRAY) && (SDOobjects[nidx].maxsub > 0U)
-       && (WRITE_ACCESS(objd->flags, (ESCvar.ALstatus & 0x0FU))) && (((uint8_t*)mbxdata)[0] <= SDOobjects[nidx].maxsub))
+   /* loop through the subindexes to get the total size */
+   uint32_t size = complete_access_subindex_loop(nidx, nsub, NULL, DOWNLOAD, 0);
+   if (size == (size_t)ABORT_CA_NOT_SUPPORTED)
    {
-      size = ((uint8_t*)mbxdata)[0] * BITS2BYTES((objd + 1U)->bitlength);
+      /* 'size' is in this case actually an abort code */
+      set_state_idle (0, index, subindex, size);
+      return;
    }
-   else
-   {
-      /* loop through the subindexes to get the total size */
-      size = complete_access_subindex_loop(nidx, nsub, NULL, DOWNLOAD, 0);
-      if (size == (size_t)ABORT_CA_NOT_SUPPORTED)
-      {
-         /* 'size' is in this case actually an abort code */
-         set_state_idle (0, index, subindex, size);
-         return;
-      }
-      size = BITS2BYTES(size);
-   }
+   size = BITS2BYTES(size);
    if (bytes != size)
    {
       set_state_idle (0, index, subindex, ABORT_TYPEMISMATCH);
