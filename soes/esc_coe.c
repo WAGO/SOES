@@ -581,11 +581,7 @@ static uint32_t complete_access_subindex_loop(int32_t const nidx,
          /* download of RO objects shall be ignored */
          else if (WRITE_ACCESS(access, state))
          {
-            for (size_t i = 0UL; i < BITS2BYTES(bitlen); ++i)
-            {
-               ((uint8_t*)(objd + nsub)->data)[i] = (mbxdata[BITS2BYTES(size) + i] & (uint8_t)(bitmask >> (i * 8U)))
-                                                    >> ((i == 0UL) ? bitoffset : 0U);
-            }
+            *(uint8_t*)(objd + nsub)->data = (mbxdata[BITS2BYTES(size)] & (uint8_t)bitmask) >> bitoffset;
          }
       }
 
