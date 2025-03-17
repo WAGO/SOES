@@ -562,20 +562,20 @@ static uint32_t complete_access_subindex_loop(int32_t const nidx,
          if (load_type == UPLOAD)
          {
             /* copy a bit data type into correct position */
+            if (bitoffset == 0)
+            {
+               mbxdata[BITSPOS2BYTESOFFSET(size)] = 0;
+            }
             uint32_t tempmask;
             if (READ_ACCESS(access, state))
             {
-                if (bitoffset == 0)
-                {
-                  mbxdata[BITSPOS2BYTESOFFSET(size)] = 0;
-                }
-                tempmask = (*(uint8_t const *)ul_source & bitmask) << bitoffset;
-                mbxdata[BITSPOS2BYTESOFFSET(size)] |= (uint8_t)tempmask;
+               tempmask = (*(uint8_t const *)ul_source & bitmask) << bitoffset;
+               mbxdata[BITSPOS2BYTESOFFSET(size)] |= (uint8_t)tempmask;
             }
             else
             {
-                tempmask = ~(bitmask << bitoffset);
-                mbxdata[BITSPOS2BYTESOFFSET(size)] &= (uint8_t)tempmask;
+               tempmask = ~(bitmask << bitoffset);
+               mbxdata[BITSPOS2BYTESOFFSET(size)] &= (uint8_t)tempmask;
             }
          }
          /* download of RO objects shall be ignored */
