@@ -569,7 +569,7 @@ static uint32_t complete_access_subindex_loop(int32_t const nidx,
                 {
                   mbxdata[BITSPOS2BYTESOFFSET(size)] = 0;
                 }
-                tempmask = (*(uint8_t *)ul_source & bitmask) << bitoffset;
+                tempmask = (*(uint8_t const *)ul_source & bitmask) << bitoffset;
                 mbxdata[BITSPOS2BYTESOFFSET(size)] |= (uint8_t)tempmask;
             }
             else
