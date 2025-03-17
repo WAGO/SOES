@@ -984,15 +984,26 @@ static void SDO_download_complete_access (void)
 
    const _objd *objd = SDOobjects[nidx].objdesc;
 
-   /* loop through the subindexes to get the total size */
-   uint32_t size = complete_access_subindex_loop(nidx, nsub, NULL, DOWNLOAD, 0);
-   if (size == (size_t)ABORT_CA_NOT_SUPPORTED)
+   uint32_t size;
+   if (   (subindex == 0U) && (SDOobjects[nidx].objtype == OTYPE_ARRAY) && (SDOobjects[nidx].maxsub > 0U)
+       && (WRITE_ACCESS(objd->flags, (ESCvar.ALstatus & 0x0FU))) && (((uint8_t*)mbxdata)[0] <= SDOobjects[nidx].maxsub))
    {
-      /* 'size' is in this case actually an abort code */
-      set_state_idle (0, index, subindex, size);
-      return;
+      // Number of subindexes are overwritten for an array object. This has to be considered for size calculation
+      size = ((uint8_t*)mbxdata)[0] * BITS2BYTES((objd + 1U)->bitlength);
    }
-   size = BITS2BYTES(size);
+   else
+   {
+      /* loop through the subindexes to get the total size */
+      size = complete_access_subindex_loop(nidx, nsub, NULL, DOWNLOAD, 0);
+      if (size == (size_t)ABORT_CA_NOT_SUPPORTED)
+      {
+         /* 'size' is in this case actually an abort code */
+         set_state_idle (0, index, subindex, size);
+         return;
+      }
+      size = BITS2BYTES(size);
+   }
+
    if (bytes != size)
    {
       set_state_idle (0, index, subindex, ABORT_TYPEMISMATCH);
