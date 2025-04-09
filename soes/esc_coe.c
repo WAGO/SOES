@@ -64,7 +64,7 @@ int16_t SDO_findsubindex (int32_t nidx, uint8_t subindex)
       return subindex;
    }
 
-   while (((objd + n)->subindex < subindex) && (n < maxsub))
+   while (((objd + n)->subindex < subindex) && ((objd + n)->subindex < maxsub))
    {
       n++;
    }
@@ -504,7 +504,8 @@ static uint32_t complete_access_subindex_loop(int32_t const nidx,
       mbxdata[1] = 0;
    }
 
-   bool const isNumberOfSubindexesChanging =   (nsub == 0U) && (load_type == DOWNLOAD)
+   bool const isNumberOfSubindexesChanging =   ((objd + nsub)->subindex == 0U)
+                                            && (load_type == DOWNLOAD)
                                             && (SDOobjects[nidx].objtype == OTYPE_ARRAY)
                                             && (WRITE_ACCESS(objd->flags, (ESCvar.ALstatus & 0x0FU)))
                                             && (mbxdata != NULL)
@@ -518,7 +519,7 @@ static uint32_t complete_access_subindex_loop(int32_t const nidx,
                          ? *(uint8_t*)(objd->data)
                          : (uint8_t)objd->value;
 
-   while (nsub <= maxsub)
+   while (true)
    {
       uint16_t const bitlen = (objd + nsub)->bitlength;
       void const * const ul_source = ((objd + nsub)->data != NULL) ?
@@ -596,9 +597,12 @@ static uint32_t complete_access_subindex_loop(int32_t const nidx,
       /* Subindex 0 is padded to 16 bit if not object type VARIABLE.
        * For VARIABLE use true bitsize.
        */
-      size +=
-      ((nsub == 0) && (SDOobjects[nidx].objtype != OTYPE_VAR)) ? 16 : bitlen;
-      nsub++;
+      size += (((objd + nsub)->subindex == 0U) && (SDOobjects[nidx].objtype != OTYPE_VAR)) ? 16U
+                                                                                           : bitlen;
+      if ((objd + nsub++)->subindex >= maxsub)
+      {
+         break;
+      }
    }
 
    return size;
@@ -1025,8 +1029,8 @@ static void SDO_download_complete_access (void)
       /* check that download data fits in the preallocated buffer */
       if ((bytes + PREALLOC_FACTOR * COE_HEADERSIZE) > PREALLOC_BUFFER_SIZE)
       {
-            set_state_idle(0, index, subindex, ABORT_CA_NOT_SUPPORTED);
-            return;
+         set_state_idle(0, index, subindex, ABORT_CA_NOT_SUPPORTED);
+         return;
       }
       /* set total size in bytes */
       ESCvar.frags = bytes;
@@ -1104,21 +1108,23 @@ static void SDO_downloadsegment (void)
       {
          if(ESCvar.flags == COMPLETE_ACCESS_FLAG)
          {
-            int32_t nidx;
-            int16_t nsub;
-
             if(ESCvar.frags > ESCvar.fragsleft + size)
             {
-               set_state_idle (0, ESCvar.index, ESCvar.subindex, ABORT_TYPEMISMATCH);
+               set_state_idle (MBXout, ESCvar.index, ESCvar.subindex, ABORT_TYPEMISMATCH);
                return;
             }
 
-            nidx = SDO_findobject(ESCvar.index);
-            nsub = SDO_findsubindex (nidx, ESCvar.subindex);
-
-            if ((nidx < 0) || (nsub < 0))
+            int32_t const nidx = SDO_findobject(ESCvar.index);
+            if (nidx < 0)
             {
-               set_state_idle (0, ESCvar.index, ESCvar.subindex, ABORT_NOOBJECT);
+               set_state_idle (MBXout, ESCvar.index, ESCvar.subindex, ABORT_NOOBJECT);
+               return;
+            }
+
+            int16_t const nsub = SDO_findsubindex (nidx, ESCvar.subindex);
+            if (nsub < 0)
+            {
+               set_state_idle (MBXout, ESCvar.index, ESCvar.subindex, ABORT_NOSUBINDEX);
                return;
             }
 
