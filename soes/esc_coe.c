@@ -50,28 +50,23 @@ typedef enum { UPLOAD, DOWNLOAD } load_t;
  */
 int16_t SDO_findsubindex (int32_t nidx, uint8_t subindex)
 {
-   const _objd *objd;
-   int16_t n = 0;
-   uint8_t maxsub;
-   objd = SDOobjects[nidx].objdesc;
-   maxsub = SDOobjects[nidx].maxsub;
-
-   /* Since most objects contain all subindexes (i.e. are not sparse),
-    * check the most likely scenario first
-    */
-   if ((subindex <= maxsub) && ((objd + subindex)->subindex == subindex))
+   if (subindex > SDOobjects[nidx].maxsub)
    {
-      return subindex;
+      return -1;
    }
 
-   while (((objd + n)->subindex < subindex) && ((objd + n)->subindex < maxsub))
+   const _objd * const objd = SDOobjects[nidx].objdesc;
+   int16_t n = 0;
+   while ((objd + n)->subindex < subindex)
    {
       n++;
    }
+
    if ((objd + n)->subindex != subindex)
    {
       return -1;
    }
+
    return n;
 }
 
