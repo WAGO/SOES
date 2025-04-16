@@ -883,10 +883,10 @@ static void SDO_download (void)
             );
             if (abort == 0)
             {
-               if ((size > 4) &&
-                     (size > (coesdo->mbxheader.length - COE_HEADERSIZE)))
+               if (   ((coesdo->command & COE_EXPEDITED_INDICATOR) == 0U)
+                   && (size > (etohs (coesdo->mbxheader.length) - COE_HEADERSIZE)))
                {
-                  size = coesdo->mbxheader.length - COE_HEADERSIZE;
+                  size = etohs (coesdo->mbxheader.length) - COE_HEADERSIZE;
                   /* signal segmented transfer */
                   ESCvar.segmented = MBXSED;
                   ESCvar.segmentedToggle = 0U;
@@ -1020,7 +1020,7 @@ static void SDO_download_complete_access (void)
    }
 
    if (   ((coesdo->command & COE_EXPEDITED_INDICATOR) == 0U)
-       && (bytes + COE_HEADERSIZE) > etohs (coesdo->mbxheader.length))
+       && (bytes > (etohs (coesdo->mbxheader.length) - COE_HEADERSIZE)))
    {
       /* check that download data fits in the preallocated buffer */
       if ((bytes + PREALLOC_FACTOR * COE_HEADERSIZE) > PREALLOC_BUFFER_SIZE)
