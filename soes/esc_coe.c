@@ -886,7 +886,15 @@ static void SDO_download (void)
                if (   ((coesdo->command & COE_EXPEDITED_INDICATOR) == 0U)
                    && (size > (etohs (coesdo->mbxheader.length) - COE_HEADERSIZE)))
                {
+                  /* check that download data fits in the preallocated buffer */
+                  if (size > PREALLOC_BUFFER_SIZE)
+                  {
+                    set_state_idle(0, index, subindex, ABORT_UNSUPPORTED);
+                    return;
+                  }
+                  ESCvar.frags = size;
                   size = etohs (coesdo->mbxheader.length) - COE_HEADERSIZE;
+                  ESCvar.fragsleft = size;
                   /* signal segmented transfer */
                   ESCvar.segmented = MBXSED;
                   ESCvar.segmentedToggle = 0U;
@@ -1023,7 +1031,7 @@ static void SDO_download_complete_access (void)
        && (bytes > (etohs (coesdo->mbxheader.length) - COE_HEADERSIZE)))
    {
       /* check that download data fits in the preallocated buffer */
-      if ((bytes + PREALLOC_FACTOR * COE_HEADERSIZE) > PREALLOC_BUFFER_SIZE)
+      if (bytes > PREALLOC_BUFFER_SIZE)
       {
          set_state_idle(0, index, subindex, ABORT_CA_NOT_SUPPORTED);
          return;
@@ -1092,6 +1100,13 @@ static void SDO_downloadsegment (void)
       {
          size = 7 - ((coesdo->command >> 1) & 7);
       }
+
+      if(size > (ESCvar.frags - ESCvar.fragsleft))
+      {
+         set_state_idle (MBXout, ESCvar.index, ESCvar.subindex, ABORT_TYPEMISMATCH);
+         return;
+      }
+
       uint8_t command = COE_COMMAND_DOWNLOADSEGRESP;
       uint8_t command2 = (coesdo->command & COE_TOGGLEBIT);  /* copy toggle bit */
       command |= command2;
