@@ -883,10 +883,18 @@ static void SDO_download (void)
             );
             if (abort == 0)
             {
-               if ((size > 4) &&
-                     (size > (coesdo->mbxheader.length - COE_HEADERSIZE)))
+               if (   ((coesdo->command & COE_EXPEDITED_INDICATOR) == 0U)
+                   && (size > (etohs (coesdo->mbxheader.length) - COE_HEADERSIZE)))
                {
-                  size = coesdo->mbxheader.length - COE_HEADERSIZE;
+                  /* check that download data fits in the preallocated buffer */
+                  if (size > PREALLOC_BUFFER_SIZE)
+                  {
+                    set_state_idle(0, index, subindex, ABORT_UNSUPPORTED);
+                    return;
+                  }
+                  ESCvar.frags = size;
+                  size = etohs (coesdo->mbxheader.length) - COE_HEADERSIZE;
+                  ESCvar.fragsleft = size;
                   /* signal segmented transfer */
                   ESCvar.segmented = MBXSED;
                   ESCvar.segmentedToggle = 0U;
@@ -1019,18 +1027,19 @@ static void SDO_download_complete_access (void)
       return;
    }
 
-   if ((bytes + COE_HEADERSIZE) > ESC_MBXDSIZE)
+   if (   ((coesdo->command & COE_EXPEDITED_INDICATOR) == 0U)
+       && (bytes > (etohs (coesdo->mbxheader.length) - COE_HEADERSIZE)))
    {
       /* check that download data fits in the preallocated buffer */
-      if ((bytes + PREALLOC_FACTOR * COE_HEADERSIZE) > PREALLOC_BUFFER_SIZE)
+      if (bytes > PREALLOC_BUFFER_SIZE)
       {
          set_state_idle(0, index, subindex, ABORT_CA_NOT_SUPPORTED);
          return;
       }
       /* set total size in bytes */
       ESCvar.frags = bytes;
-      /* limit to mailbox size */
-      size = ESC_MBXDSIZE - COE_HEADERSIZE;
+      /* limit to actual transmitted data length */
+      size = etohs (coesdo->mbxheader.length) - COE_HEADERSIZE;
       /* number of bytes done */
       ESCvar.fragsleft = size;
       ESCvar.segmented = MBXSED;
@@ -1091,6 +1100,13 @@ static void SDO_downloadsegment (void)
       {
          size = 7 - ((coesdo->command >> 1) & 7);
       }
+
+      if(size > (ESCvar.frags - ESCvar.fragsleft))
+      {
+         set_state_idle (MBXout, ESCvar.index, ESCvar.subindex, ABORT_TYPEMISMATCH);
+         return;
+      }
+
       uint8_t command = COE_COMMAND_DOWNLOADSEGRESP;
       uint8_t command2 = (coesdo->command & COE_TOGGLEBIT);  /* copy toggle bit */
       command |= command2;
@@ -1531,7 +1547,8 @@ void ESC_coeprocess (void)
             /* SDO upload segment request */
             SDO_uploadsegment ();
          }
-         else if (SDO_COMMAND(coesdo->command) == COE_COMMAND_DOWNLOADREQUEST)
+         else if (   (SDO_COMMAND(coesdo->command) == COE_COMMAND_DOWNLOADREQUEST)
+                  && (etohs (coesdo->mbxheader.length) >= COE_HEADERSIZE))
          {
             /* initiate SDO download request */
             if (SDO_COMPLETE_ACCESS(coesdo->command))
@@ -1544,6 +1561,7 @@ void ESC_coeprocess (void)
             }
          }
          else if (   (SDO_COMMAND(coesdo->command) == COE_COMMAND_DOWNLOADSEGREQ)
+                  && (etohs (coesdo->mbxheader.length) >= COE_HEADERSIZE)
                   && (ESCvar.segmented == MBXSED))
          {
             /* SDO download segment request */
