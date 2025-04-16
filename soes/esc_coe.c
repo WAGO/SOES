@@ -1019,7 +1019,8 @@ static void SDO_download_complete_access (void)
       return;
    }
 
-   if ((bytes + COE_HEADERSIZE) > ESC_MBXDSIZE)
+   if (   ((coesdo->command & COE_EXPEDITED_INDICATOR) == 0U)
+       && (bytes + COE_HEADERSIZE) > etohs (coesdo->mbxheader.length))
    {
       /* check that download data fits in the preallocated buffer */
       if ((bytes + PREALLOC_FACTOR * COE_HEADERSIZE) > PREALLOC_BUFFER_SIZE)
@@ -1029,8 +1030,8 @@ static void SDO_download_complete_access (void)
       }
       /* set total size in bytes */
       ESCvar.frags = bytes;
-      /* limit to mailbox size */
-      size = ESC_MBXDSIZE - COE_HEADERSIZE;
+      /* limit to actual transmitted data length */
+      size = etohs (coesdo->mbxheader.length) - COE_HEADERSIZE;
       /* number of bytes done */
       ESCvar.fragsleft = size;
       ESCvar.segmented = MBXSED;
@@ -1531,7 +1532,8 @@ void ESC_coeprocess (void)
             /* SDO upload segment request */
             SDO_uploadsegment ();
          }
-         else if (SDO_COMMAND(coesdo->command) == COE_COMMAND_DOWNLOADREQUEST)
+         else if (   (SDO_COMMAND(coesdo->command) == COE_COMMAND_DOWNLOADREQUEST)
+                  && (etohs (coesdo->mbxheader.length) >= COE_HEADERSIZE))
          {
             /* initiate SDO download request */
             if (SDO_COMPLETE_ACCESS(coesdo->command))
@@ -1544,6 +1546,7 @@ void ESC_coeprocess (void)
             }
          }
          else if (   (SDO_COMMAND(coesdo->command) == COE_COMMAND_DOWNLOADSEGREQ)
+                  && (etohs (coesdo->mbxheader.length) >= COE_HEADERSIZE)
                   && (ESCvar.segmented == MBXSED))
          {
             /* SDO download segment request */
