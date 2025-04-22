@@ -1528,7 +1528,8 @@ void ESC_coeprocess (void)
       if (service == COE_SDOREQUEST)
       {
          if ((SDO_COMMAND(coesdo->command) == COE_COMMAND_UPLOADREQUEST)
-               && (etohs (coesdo->mbxheader.length) == COE_HEADERSIZE))
+               && (etohs (coesdo->mbxheader.length) == COE_HEADERSIZE)
+               && (ESCvar.segmented == 0U))
          {
             /* initiate SDO upload request */
             if (SDO_COMPLETE_ACCESS(coesdo->command))
@@ -1548,7 +1549,8 @@ void ESC_coeprocess (void)
             SDO_uploadsegment ();
          }
          else if (   (SDO_COMMAND(coesdo->command) == COE_COMMAND_DOWNLOADREQUEST)
-                  && (etohs (coesdo->mbxheader.length) >= COE_HEADERSIZE))
+                  && (etohs (coesdo->mbxheader.length) >= COE_HEADERSIZE)
+                  && (ESCvar.segmented == 0U))
          {
             /* initiate SDO download request */
             if (SDO_COMPLETE_ACCESS(coesdo->command))
@@ -1571,24 +1573,27 @@ void ESC_coeprocess (void)
       /* initiate SDO get OD list */
       else
       {
-         if ((service == COE_SDOINFORMATION)
-               && (coeobjdesc->infoheader.opcode == 0x01))
+         if (     (service == COE_SDOINFORMATION)
+               && (coeobjdesc->infoheader.opcode == 0x01)
+               && (ESCvar.segmented == 0U))
          {
             SDO_getodlist ();
          }
          /* initiate SDO get OD */
          else
          {
-            if ((service == COE_SDOINFORMATION)
-                  && (coeobjdesc->infoheader.opcode == 0x03))
+            if (     (service == COE_SDOINFORMATION)
+                  && (coeobjdesc->infoheader.opcode == 0x03)
+                  && (ESCvar.segmented == 0U))
             {
                SDO_getod ();
             }
             /* initiate SDO get ED */
             else
             {
-               if ((service == COE_SDOINFORMATION)
-                     && (coeobjdesc->infoheader.opcode == 0x05))
+               if (     (service == COE_SDOINFORMATION)
+                     && (coeobjdesc->infoheader.opcode == 0x05)
+                     && (ESCvar.segmented == 0U))
                {
                   SDO_geted ();
                }
@@ -1605,6 +1610,7 @@ void ESC_coeprocess (void)
                      {
                         SDO_abort (0, etohs (coesdo->index), coesdo->subindex, ABORT_UNSUPPORTED);
                      }
+                     ESCvar.segmented = 0U;
                      MBXcontrol[0].state = MBXstate_idle;
                      ESCvar.xoe = 0;
                   }
