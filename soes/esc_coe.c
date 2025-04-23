@@ -1569,6 +1569,13 @@ void ESC_coeprocess (void)
             /* SDO download segment request */
             SDO_downloadsegment ();
          }
+         else
+         {
+            MBX_error (MBXERR_INVALIDHEADER);
+            ESCvar.segmented = 0U;
+            MBXcontrol[0].state = MBXstate_idle;
+            ESCvar.xoe = 0;
+         }
       }
       /* initiate SDO get OD list */
       else
@@ -1599,21 +1606,17 @@ void ESC_coeprocess (void)
                }
                else
                {
-                  /* COE not recognised above */
-                  if (ESCvar.xoe == MBXCOE)
+                  if (service == 0)
                   {
-                     if (service == 0)
-                     {
-                        MBX_error (MBXERR_INVALIDHEADER);
-                     }
-                     else
-                     {
-                        SDO_abort (0, etohs (coesdo->index), coesdo->subindex, ABORT_UNSUPPORTED);
-                     }
-                     ESCvar.segmented = 0U;
-                     MBXcontrol[0].state = MBXstate_idle;
-                     ESCvar.xoe = 0;
+                     MBX_error (MBXERR_INVALIDHEADER);
                   }
+                  else
+                  {
+                     SDO_abort (0, etohs (coesdo->index), coesdo->subindex, ABORT_UNSUPPORTED);
+                  }
+                  ESCvar.segmented = 0U;
+                  MBXcontrol[0].state = MBXstate_idle;
+                  ESCvar.xoe = 0;
                }
             }
          }
