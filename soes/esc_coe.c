@@ -281,6 +281,7 @@ static void set_state_idle (uint8_t reusembx,
    if (abortcode != 0)
    {
       SDO_abort (reusembx, index, subindex, abortcode);
+      ESCvar.segmented = 0U;
    }
 
    MBXcontrol[0].state = MBXstate_idle;
