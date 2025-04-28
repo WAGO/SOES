@@ -426,19 +426,20 @@ static void SDO_upload (void)
                }
             }
             MBXcontrol[MBXout].state = MBXstate_outreq;
+            MBXcontrol[0].state = MBXstate_idle;
+            ESCvar.xoe = 0;
          }
       }
       else
       {
-         SDO_abort (0, index, subindex, ABORT_NOSUBINDEX);
+         set_state_idle (0, index, subindex, ABORT_NOSUBINDEX);
       }
    }
    else
    {
-      SDO_abort (0, index, subindex, ABORT_NOOBJECT);
+      set_state_idle (0, index, subindex, ABORT_NOOBJECT);
    }
-   MBXcontrol[0].state = MBXstate_idle;
-   ESCvar.xoe = 0;
+
 }
 
 static uint32_t complete_access_get_variables(_COEsdo *coesdo, uint16_t *index,
@@ -922,6 +923,8 @@ static void SDO_download (void)
                   coeres->command = COE_COMMAND_DOWNLOADRESPONSE;
                   coeres->size = htoel (0);
                   MBXcontrol[MBXout].state = MBXstate_outreq;
+                  MBXcontrol[0].state = MBXstate_idle;
+                  ESCvar.xoe = 0;
                }
                if (ESCvar.segmented == 0)
                {
@@ -929,39 +932,37 @@ static void SDO_download (void)
                   abort = ESC_download_post_objecthandler (index, subindex, (objd + nsub)->flags);
                   if (abort != 0)
                   {
-                     SDO_abort (MBXout, index, subindex, abort);
+                     set_state_idle (MBXout, index, subindex, abort);
                   }
                }
             }
             else
             {
-               SDO_abort (0, index, subindex, abort);
+               set_state_idle (0, index, subindex, abort);
             }
          }
          else
          {
             if (access == ATYPE_RO)
             {
-               SDO_abort (0, index, subindex, ABORT_READONLY);
+               set_state_idle (0, index, subindex, ABORT_READONLY);
 
             }
             else
             {
-               SDO_abort (0, index, subindex, ABORT_NOTINTHISSTATE);
+               set_state_idle (0, index, subindex, ABORT_NOTINTHISSTATE);
             }
          }
       }
       else
       {
-         SDO_abort (0, index, subindex, ABORT_NOSUBINDEX);
+         set_state_idle (0, index, subindex, ABORT_NOSUBINDEX);
       }
    }
    else
    {
-      SDO_abort (0, index, subindex, ABORT_NOOBJECT);
+      set_state_idle (0, index, subindex, ABORT_NOOBJECT);
    }
-   MBXcontrol[0].state = MBXstate_idle;
-   ESCvar.xoe = 0;
 }
 
 /** Function for handling incoming requested SDO Download with Complete Access,
@@ -1610,14 +1611,14 @@ void ESC_coeprocess (void)
                   if (service == 0)
                   {
                      MBX_error (MBXERR_INVALIDHEADER);
+                     ESCvar.segmented = 0U;
+                     MBXcontrol[0].state = MBXstate_idle;
+                     ESCvar.xoe = 0;
                   }
                   else
                   {
-                     SDO_abort (0, etohs (coesdo->index), coesdo->subindex, ABORT_UNSUPPORTED);
+                     set_state_idle (0, etohs (coesdo->index), coesdo->subindex, ABORT_UNSUPPORTED);
                   }
-                  ESCvar.segmented = 0U;
-                  MBXcontrol[0].state = MBXstate_idle;
-                  ESCvar.xoe = 0;
                }
             }
          }
