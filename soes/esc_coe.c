@@ -661,7 +661,7 @@ static void SDO_upload_complete_access (void)
    size = BITS2BYTES(size);
 
    /* check that upload data fits in the preallocated buffer */
-   if ((size + PREALLOC_FACTOR * COE_HEADERSIZE) > PREALLOC_BUFFER_SIZE)
+   if (size > PREALLOC_BUFFER_SIZE)
    {
       set_state_idle (MBXout, index, subindex, ABORT_CA_NOT_SUPPORTED);
       return;
